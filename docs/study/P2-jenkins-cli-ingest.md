@@ -93,11 +93,14 @@ credentials do not need another direct line. No other plugin was added.
 ## JCasC, the library, and the agent
 
 `libraryPath` is still not a directory on the Jenkins machine. P2 mounts this repo at
-`/pipelineiq` inside the controller and points Modern SCM Git at `file:///pipelineiq` with
-`libraryPath: shared-library`. `defaultVersion` is `${PIPELINEIQ_LIBRARY_REF}`, which compose
+`/pipelineiq` on the controller and the agent, and points Modern SCM Git at
+`file:///pipelineiq` with `libraryPath: shared-library`. The agent has the mount because
+library checkout can run there. Both images mark `/pipelineiq` as a Git safe directory and
+allow local checkout. `defaultVersion` is `${PIPELINEIQ_LIBRARY_REF}`, which compose
 defaults to `main`. This branch is not `main`. `.env.example` sets the ref to this branch
-so the controller can load `shared-library/` before merge. Git checkout sees that commit,
-not later uncommitted edits.
+so the controller can load `shared-library/` before merge. The verification job points that
+ref at a local branch named `ci-library`, because a slash in the branch name is a bad
+library version. Git checkout sees that commit, not later uncommitted edits.
 
 The controller image runs `git config --system --add safe.directory /pipelineiq` and
 `safe.directory '*'`. `--global` would write `~/.gitconfig` under `/var/jenkins_home`, and
@@ -115,10 +118,12 @@ Jenkins is published on host port 8081. Port 8080 stays the PipelineIQ service.
 `PIPELINEIQ_URL` inside the agent network is `http://pipelineiq-server:8080`.
 
 The seed file is Job DSL. JCasC loads it at startup (`jobs: - file:`), and a `seed` job
-re-applies it. `tasks.ps1 seed` triggers that job. Branch indexing is a periodic scan
-(5 minutes). There is no webhook: GitHub cannot reach localhost. The GitHub credential is
-a placeholder until a fine-grained token is set. Scan of a missing or private repo will
-fail until that token is real and the lab repo is pushed. That is expected.
+re-applies it. `tasks.ps1 seed` triggers that job. The GitHub branch source method in this
+Job DSL version is `scanCredentialsId`, not `credentialsId`. Origin branches are indexed;
+pull requests are not. Branch indexing is a periodic scan (`5m`). There is no webhook:
+GitHub cannot reach localhost. The GitHub credential is a placeholder until a fine-grained
+token is set. Scan of a missing or private repo will fail until that token is real and the
+lab repo is pushed. That is expected.
 
 The controller has zero executors. Builds run on the agent label `linux`.
 

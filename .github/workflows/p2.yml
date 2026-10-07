@@ -73,9 +73,9 @@ jobs:
         run: |
           python3 - << 'PY'
           from pathlib import Path
-          needles = ("readyz", "login=", "SEVERE", "Error", "ERROR", "Failed", "Exception", "Caused by", "did not", "Configuration", "casc", "plugin", "exit code")
+          needles = ("readyz", "login=", "SEVERE", "Error", "ERROR", "Failed", "Exception", "Caused by", "did not", "Configuration", "casc", "plugin", "exit code", "library", "dubious", "Rejected", "sandbox", "createItem", "pipelineiq")
           chunks = ["P2 stack step failed."]
-          for name in ("p2-script.log", "p2-compose-logs.txt"):
+          for name in ("p2-script.log", "p2-compose-logs.txt", "p2-jenkins.log"):
               path = Path(name)
               if not path.exists():
                   continue
@@ -83,7 +83,7 @@ jobs:
               picked = [line for line in lines if any(n in line for n in needles)]
               chunks.append("## " + name)
               chunks.append("```")
-              chunks.extend(picked[:80])
+              chunks.extend(picked[-60:])
               chunks.append("```")
           Path("/tmp/p2-fail.md").write_text("\n".join(chunks)[:60000])
           PY

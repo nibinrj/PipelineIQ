@@ -90,7 +90,7 @@ services:
       - jenkins-home:/var/jenkins_home
       - ./jenkins/casc:/var/jenkins_casc:ro
       - ./jenkins/jobs:/var/jenkins_jobs:ro
-      # file:// checkout of the shared library. The agent does not see this mount.
+      # file:// checkout of the shared library. The agent has the same mount.
       - .:/pipelineiq:ro
 
   agent:
@@ -108,6 +108,11 @@ services:
       JENKINS_ADMIN_USER: ${JENKINS_ADMIN_ID:-admin}
       JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set JENKINS_ADMIN_PASSWORD in .env}
       PIPELINEIQ_URL: http://pipelineiq-server:8080
+      # Library checkout can run on the agent. file:// is refused without this.
+      JAVA_OPTS: "-Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
+    volumes:
+      # Same repo the controller uses for the shared library. Read-only.
+      - .:/pipelineiq:ro
     # The Docker socket is not mounted. A missing socket would stop the agent,
     # and the P2 lab does not start sibling containers.
 

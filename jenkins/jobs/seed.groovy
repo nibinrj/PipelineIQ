@@ -14,13 +14,15 @@ repos.each { spec ->
         id(spec.name)
         repoOwner(spec.owner)
         repository(spec.repository)
-        credentialsId('github-token')
-        traits {
-          gitHubBranchDiscovery {
-            // 3 = all branches. PRs are not indexed in P2.
-            strategyId(3)
-          }
-        }
+        // This Job DSL context has scanCredentialsId, not credentialsId.
+        scanCredentialsId('github-token')
+        // Origin branches only. PR discovery stays off.
+        buildOriginBranch(true)
+        buildOriginBranchWithPR(true)
+        buildOriginPRMerge(false)
+        buildOriginPRHead(false)
+        buildForkPRMerge(false)
+        buildForkPRHead(false)
       }
     }
     orphanedItemStrategy {
@@ -30,7 +32,7 @@ repos.each { spec ->
     }
     triggers {
       periodicFolderTrigger {
-        interval('5')
+        interval('5m')
       }
     }
   }

@@ -203,6 +203,9 @@ dump_logs() {
 trap dump_logs EXIT
 
 cp .env.example .env
+# A slash branch name is a poor library version. Point a plain ref at this commit.
+git branch -f ci-library HEAD
+sed -i 's|^PIPELINEIQ_LIBRARY_REF=.*|PIPELINEIQ_LIBRARY_REF=ci-library|' .env
 write_lab
 
 echo "starting the stack with tasks.ps1 up"
@@ -281,7 +284,7 @@ node('linux') {
     result = 'FAILURE'
     throw err
   } finally {
-    reportBuild(repository: 'nibinrj/pipelineiq-lab', result: result)
+    reportBuild(repository: 'nibinrj/pipelineiq-lab', branch: 'main', commit: 'ci-lab', result: result)
   }
 }
 ]]></script>
@@ -307,14 +310,16 @@ curl -fsS -c /tmp/jcookies -b /tmp/jcookies -u "$auth" -H "${crumb_field}: ${cru
   http://localhost:8081/job/lab-manual/build >/dev/null
 
 echo "waiting for lab-manual"
-for i in $(seq 1 40); do
+for i in $(seq 1 60); do
   body=$(curl -sS -u "$auth" http://localhost:8081/job/lab-manual/lastBuild/api/json || true)
   if printf '%s' "$body" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("building") is False else 1)'; then
     printf '%s' "$body" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("jenkins result", d.get("result"))'
     break
   fi
-  if [ "$i" -eq 40 ]; then
+  if [ "$i" -eq 60 ]; then
     echo "lab build did not finish" >&2
+    curl -fsS -u "$auth" http://localhost:8081/job/lab-manual/lastBuild/consoleText > p2-jenkins.log || true
+    tail -80 p2-jenkins.log >&2 || true
     exit 1
   fi
   sleep 15

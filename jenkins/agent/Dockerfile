@@ -17,8 +17,10 @@ FROM jenkins/inbound-agent:3386.v353e57a_1b_ea_0-3-jdk21
 
 USER root
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends curl git \
+ && rm -rf /var/lib/apt/lists/* \
+ && git config --system --add safe.directory /pipelineiq \
+ && git config --system --add safe.directory '*'
 COPY --from=maven /usr/share/maven /usr/share/maven
 COPY --from=build /usr/local/go /usr/local/go
 COPY --from=build /out/pipelineiq /usr/local/bin/pipelineiq
