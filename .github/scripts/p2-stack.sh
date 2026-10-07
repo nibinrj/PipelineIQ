@@ -210,16 +210,22 @@ pwsh -NoProfile -Command '$env:COMPOSE_PATH_SEPARATOR=":"; $env:COMPOSE_FILE="do
 
 echo "waiting for PipelineIQ and Jenkins"
 for i in $(seq 1 90); do
-  if curl -fsS http://localhost:8080/readyz >/dev/null && curl -fsS http://localhost:8081/login >/dev/null; then
+  ready=$(curl -sS -o /tmp/readyz.out -w "%{http_code}" http://localhost:8080/readyz || echo curl-fail)
+  login=$(curl -sS -o /tmp/login.out -w "%{http_code}" http://localhost:8081/login || echo curl-fail)
+  if [ "$ready" = "200" ] && [ "$login" = "200" ]; then
     echo "PipelineIQ and Jenkins answered"
     break
   fi
   if [ $((i % 6)) -eq 0 ]; then
-    echo "still waiting (${i}); compose ps:"
+    echo "still waiting (${i}); readyz=${ready} login=${login}"
     docker compose --env-file .env ps || true
+    echo "---- jenkins log ----"
+    docker compose --env-file .env logs --tail 30 jenkins || true
+    echo "---- server log ----"
+    docker compose --env-file .env logs --tail 20 pipelineiq-server || true
   fi
   if [ "$i" -eq 90 ]; then
-    echo "stack did not become ready" >&2
+    echo "stack did not become ready; readyz=${ready} login=${login}" >&2
     exit 1
   fi
   sleep 5

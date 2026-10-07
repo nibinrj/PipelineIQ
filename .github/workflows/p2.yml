@@ -5,6 +5,10 @@ on:
     branches: [arena/750d568c-pipelineiq]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -67,18 +71,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          {
-            echo "P2 stack step failed on ${GITHUB_SHA}."
-            echo
-            echo '```'
-            tail -n 180 p2-script.log 2>/dev/null || true
-            echo '```'
-            echo
-            echo '```'
-            tail -n 120 p2-compose-logs.txt 2>/dev/null || true
-            echo '```'
-          } > /tmp/p2-fail.md
-          gh pr comment 1 --body-file /tmp/p2-fail.md
+          python3 - << 'PY'
+          from pathlib import Path
+          lines = []
+          for name in ("p2-script.log", "p2-compose-logs.txt"):
+              path = Path(name)
+              if path.exists():
+                  lines.extend(path.read_text(errors="replace").splitlines()[-80:])
+          for line in lines[-80:]:
+              safe = line.replace("%", "%25").replace("\r", "%0D")[:400]
+              print(f"::error title=p2::{safe}")
+          PY
+          gh pr comment 1 --body-file <(printf '%s\n' 'P2 stack step failed. See the check annotations.') || true
 
       - uses: actions/upload-artifact@v4
         if: always()
