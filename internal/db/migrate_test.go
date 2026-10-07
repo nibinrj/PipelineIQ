@@ -23,7 +23,7 @@ var planTables = map[string][]string{
 		"id", "repository_id", "job_name", "build_number", "branch", "pr_number",
 		"commit_sha", "result", "started_at", "finished_at", "duration_ms",
 		"agent_name", "agent_instance_type", "agent_lifecycle", "infra_failure",
-		"infra_reason", "cost_usd",
+		"infra_reason", "cost_usd", "log_tail",
 	},
 	"stage_run":   {"id", "build_id", "name", "started_at", "duration_ms", "result"},
 	"test_case":   {"id", "repository_id", "module", "class_name", "method_name"},

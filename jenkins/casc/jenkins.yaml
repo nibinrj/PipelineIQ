@@ -1,0 +1,58 @@
+# Local Jenkins. Nothing here is meant to be clicked.
+# Secrets come from the container environment, which compose reads from .env.
+jenkins:
+  systemMessage: "PipelineIQ local controller. Configured by JCasC. Do not change this in the UI."
+  numExecutors: 0
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  nodes:
+    - permanent:
+        name: "agent"
+        labelString: "linux"
+        mode: NORMAL
+        numExecutors: 2
+        remoteFS: "/home/jenkins/agent"
+        launcher:
+          inbound:
+            webSocket: true
+
+jobs:
+  - file: /var/jenkins_jobs/seed.groovy
+
+unclassified:
+  location:
+    url: http://jenkins:8080/
+    adminAddress: admin@localhost
+  globalLibraries:
+    libraries:
+      - name: pipelineiq
+        defaultVersion: "${PIPELINEIQ_LIBRARY_REF}"
+        implicit: true
+        retriever:
+          modernSCM:
+            libraryPath: shared-library
+            scm:
+              git:
+                remote: file:///pipelineiq
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: github-token
+              secret: "${GITHUB_TOKEN}"
+              description: "Fine-grained GitHub token for branch indexing"
+          - string:
+              scope: GLOBAL
+              id: pipelineiq-ingest-key
+              secret: "${PIPELINEIQ_INGEST_KEY}"
+              description: "Bearer key for PipelineIQ ingest"

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written to the Surefire 3.6.0 element names. Not captured from a Surefire run. -->
+<testsuite name="io.pipelineiq.lab.core.CoreTest" tests="1" failures="1" errors="0" skipped="0">
+  <testcase name="adds" classname="io.pipelineiq.lab.core.CoreTest" time="0.012">
+    <failure message="expected 3" type="java.lang.AssertionError">java.lang.AssertionError: expected 3
+	at org.junit.jupiter.api.AssertionUtils.fail(AssertionUtils.java:38)
+	at io.pipelineiq.lab.core.CoreTest.adds(CoreTest.java:12)
+</failure>
+  </testcase>
+</testsuite>

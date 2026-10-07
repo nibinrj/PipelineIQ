@@ -41,6 +41,7 @@ type Build struct {
 	CostUsd           pgtype.Numeric
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
+	LogTail           *string
 }
 
 type InfraEvent struct {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A rerun passed. Surefire keeps the failed attempts as flakyFailure and omits failure. -->
+<testsuite name="io.pipelineiq.lab.flaky.FlipTest" tests="1" failures="0" errors="0" skipped="0">
+  <testcase name="flips" classname="io.pipelineiq.lab.flaky.FlipTest" time="0.040">
+    <flakyFailure message="expected true" type="java.lang.AssertionError">java.lang.AssertionError: expected true
+	at io.pipelineiq.lab.flaky.FlipTest.flips(FlipTest.java:11)
+</flakyFailure>
+    <flakyFailure message="expected true" type="java.lang.AssertionError">java.lang.AssertionError: expected true
+	at io.pipelineiq.lab.flaky.FlipTest.flips(FlipTest.java:11)
+</flakyFailure>
+  </testcase>
+</testsuite>

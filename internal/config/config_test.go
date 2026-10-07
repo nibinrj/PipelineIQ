@@ -12,6 +12,7 @@ func TestFromEnv(t *testing.T) {
 	t.Setenv("PIPELINEIQ_SHUTDOWN_TIMEOUT", "")
 	t.Setenv("PIPELINEIQ_READY_TIMEOUT", "")
 	t.Setenv("PIPELINEIQ_LOG_LEVEL", "")
+	t.Setenv("PIPELINEIQ_INGEST_KEY", "")
 
 	tests := []struct {
 		name    string
@@ -24,8 +25,16 @@ func TestFromEnv(t *testing.T) {
 			wantErr: "PIPELINEIQ_DATABASE_URL is required",
 		},
 		{
+			name:    "ingest key required",
+			env:     map[string]string{"PIPELINEIQ_DATABASE_URL": "postgres://example"},
+			wantErr: "PIPELINEIQ_INGEST_KEY is required",
+		},
+		{
 			name: "defaults",
-			env:  map[string]string{"PIPELINEIQ_DATABASE_URL": "postgres://example"},
+			env: map[string]string{
+				"PIPELINEIQ_DATABASE_URL": "postgres://example",
+				"PIPELINEIQ_INGEST_KEY":   "local-key",
+			},
 			check: func(t *testing.T, cfg Config) {
 				t.Helper()
 				if cfg.HTTPAddr != ":8080" {
@@ -46,6 +55,7 @@ func TestFromEnv(t *testing.T) {
 			name: "overrides",
 			env: map[string]string{
 				"PIPELINEIQ_DATABASE_URL":     "postgres://example",
+				"PIPELINEIQ_INGEST_KEY":       "local-key",
 				"PIPELINEIQ_HTTP_ADDR":        "127.0.0.1:9090",
 				"PIPELINEIQ_SHUTDOWN_TIMEOUT": "3s",
 				"PIPELINEIQ_READY_TIMEOUT":    "500ms",

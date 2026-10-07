@@ -1,6 +1,5 @@
 // Command pipelineiq-server is the PipelineIQ HTTP service.
-// Jenkins agents do not talk to it yet; P1 only proves it can start, migrate,
-// and answer liveness and readiness.
+// Agents upload builds to POST /api/v1/builds. P1 liveness and readiness remain.
 package main
 
 import (
@@ -8,14 +7,17 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/nibinrj/PipelineIQ/internal/api"
 	"github.com/nibinrj/PipelineIQ/internal/config"
 	"github.com/nibinrj/PipelineIQ/internal/db"
 	"github.com/nibinrj/PipelineIQ/internal/httpserver"
+	"github.com/nibinrj/PipelineIQ/internal/ingest"
 )
 
 func main() {
@@ -56,7 +58,10 @@ func run() error {
 	}
 	log.Info("listening", "addr", ln.Addr().String(), "database_host", databaseHost(cfg.DatabaseURL))
 
-	handler := httpserver.New(log, db.NewStore(pool), cfg.ReadyTimeout)
+	ingester := ingest.New(pool)
+	handler := httpserver.New(log, db.NewStore(pool), cfg.ReadyTimeout, func(mux *http.ServeMux) {
+		api.Register(mux, log, cfg.IngestKey, ingester)
+	})
 	if err := httpserver.Serve(ctx, ln, handler, cfg.ShutdownTimeout); err != nil {
 		return err
 	}

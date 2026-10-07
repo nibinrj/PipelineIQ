@@ -17,6 +17,9 @@ type Config struct {
 	ShutdownTimeout time.Duration
 	ReadyTimeout    time.Duration
 	LogLevel        string
+	// IngestKey is the bearer token for POST /api/v1/builds. It is required so
+	// an empty configuration cannot leave ingest open.
+	IngestKey string
 }
 
 // FromEnv reads PIPELINEIQ_* variables. Missing optional values get the
@@ -28,6 +31,7 @@ func FromEnv() (Config, error) {
 		ShutdownTimeout: 10 * time.Second,
 		ReadyTimeout:    2 * time.Second,
 		LogLevel:        strings.ToLower(envOr("PIPELINEIQ_LOG_LEVEL", "info")),
+		IngestKey:       strings.TrimSpace(os.Getenv("PIPELINEIQ_INGEST_KEY")),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("PIPELINEIQ_DATABASE_URL is required")
@@ -42,6 +46,10 @@ func FromEnv() (Config, error) {
 	case "debug", "info", "warn", "error":
 	default:
 		return Config{}, fmt.Errorf("PIPELINEIQ_LOG_LEVEL must be debug, info, warn, or error")
+	}
+	// Last, so a bad duration or log level is still the error the caller sees.
+	if cfg.IngestKey == "" {
+		return Config{}, fmt.Errorf("PIPELINEIQ_INGEST_KEY is required")
 	}
 	return cfg, nil
 }

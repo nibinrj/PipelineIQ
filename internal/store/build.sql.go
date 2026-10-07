@@ -7,6 +7,9 @@ package store
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getBuildByJobNumber = `-- name: GetBuildByJobNumber :one
@@ -39,9 +42,31 @@ type GetBuildByJobNumberParams struct {
 	BuildNumber int32
 }
 
-func (q *Queries) GetBuildByJobNumber(ctx context.Context, arg GetBuildByJobNumberParams) (Build, error) {
+type GetBuildByJobNumberRow struct {
+	ID                int64
+	RepositoryID      int64
+	JobName           string
+	BuildNumber       int32
+	Branch            string
+	PrNumber          *int32
+	CommitSha         string
+	Result            string
+	StartedAt         *time.Time
+	FinishedAt        *time.Time
+	DurationMs        *int64
+	AgentName         *string
+	AgentInstanceType *string
+	AgentLifecycle    string
+	InfraFailure      bool
+	InfraReason       *string
+	CostUsd           pgtype.Numeric
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+func (q *Queries) GetBuildByJobNumber(ctx context.Context, arg GetBuildByJobNumberParams) (GetBuildByJobNumberRow, error) {
 	row := q.db.QueryRow(ctx, getBuildByJobNumber, arg.JobName, arg.BuildNumber)
-	var i Build
+	var i GetBuildByJobNumberRow
 	err := row.Scan(
 		&i.ID,
 		&i.RepositoryID,

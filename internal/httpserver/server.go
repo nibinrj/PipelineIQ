@@ -1,5 +1,5 @@
 // Package httpserver is the net/http front of pipelineiq-server.
-// P1 exposes only liveness and readiness. Ingest arrives in P2.
+// Liveness and readiness live here. Ingest routes are registered by the caller.
 package httpserver
 
 import (
@@ -19,10 +19,10 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// New returns the request router. Method and path are part of the pattern, so
-// POST /healthz is rejected by the mux with 405. That is the Go 1.22 ServeMux,
-// not a framework.
-func New(log *slog.Logger, pinger Pinger, readyTimeout time.Duration) http.Handler {
+// New returns the request router. register, if set, adds routes such as ingest.
+// Method and path are part of the pattern, so POST /healthz is rejected by the
+// mux with 405. That is the Go 1.22 ServeMux, not a framework.
+func New(log *slog.Logger, pinger Pinger, readyTimeout time.Duration, register ...func(*http.ServeMux)) http.Handler {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -33,6 +33,11 @@ func New(log *slog.Logger, pinger Pinger, readyTimeout time.Duration) http.Handl
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /readyz", s.readyz)
+	for _, fn := range register {
+		if fn != nil {
+			fn(mux)
+		}
+	}
 	return mux
 }
 
