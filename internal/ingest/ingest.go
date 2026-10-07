@@ -114,7 +114,7 @@ func (s *Service) Apply(ctx context.Context, report Report) (Build, error) {
 	if err != nil {
 		return Build{}, fmt.Errorf("begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := store.New(tx)
 	repoID, err := q.GetOrCreateRepository(ctx, report.Repository)

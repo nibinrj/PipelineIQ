@@ -98,7 +98,7 @@ func TestServeStopsOnCancel(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}

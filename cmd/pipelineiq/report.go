@@ -45,10 +45,10 @@ func report(args []string) int {
 	}
 	if err := cfg.upload(context.Background()); err != nil {
 		if !cfg.Strict && isDown(err) {
-			fmt.Fprintf(cfg.Stderr, "pipelineiq: server unreachable, report not uploaded: %v\n", err)
+			_, _ = fmt.Fprintf(cfg.Stderr, "pipelineiq: server unreachable, report not uploaded: %v\n", err)
 			return 0
 		}
-		fmt.Fprintf(cfg.Stderr, "pipelineiq: %v\n", err)
+		_, _ = fmt.Fprintf(cfg.Stderr, "pipelineiq: %v\n", err)
 		return 1
 	}
 	return 0
@@ -147,7 +147,7 @@ func postOnce(ctx context.Context, client *http.Client, server, key, contentType
 	if err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	switch {
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
@@ -230,7 +230,7 @@ func addFilePart(w *multipart.Writer, field, path string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	part, err := w.CreateFormFile(field, filepath.ToSlash(path))
 	if err != nil {
 		return err

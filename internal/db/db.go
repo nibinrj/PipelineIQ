@@ -64,7 +64,7 @@ func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 // schema, so that is the same shape as a static holder in Java.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	sqlDB := stdlib.OpenDBFromPool(pool)
-	defer sqlDB.Close() // does not close the pool; pgx documents that
+	defer func() { _ = sqlDB.Close() }() // does not close the pool; pgx documents that
 
 	// goose's default logger writes plain text to stdout. The service logs JSON.
 	goose.SetLogger(goose.NopLogger())

@@ -215,7 +215,7 @@ func readPart(header *multipart.FileHeader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	b, err := io.ReadAll(io.LimitReader(f, MaxBody))
 	if err != nil {
 		return "", err
