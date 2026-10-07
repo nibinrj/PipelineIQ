@@ -36,4 +36,9 @@ if [ -z "$secret" ]; then
   exit 1
 fi
 
-exec jenkins-agent -url "$JENKINS_URL" -secret "$secret" -name "$JENKINS_AGENT_NAME" -webSocket "$@"
+# The image's jenkins-agent already adds -url and -name from these variables.
+# Passing them again makes the remoting parser reject the launch.
+echo "pipelineiq-agent: starting inbound WebSocket agent" >&2
+export JENKINS_SECRET="$secret"
+export JENKINS_WEB_SOCKET=true
+exec jenkins-agent "$@"

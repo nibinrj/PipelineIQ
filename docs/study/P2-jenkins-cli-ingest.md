@@ -111,8 +111,10 @@ The agent is inbound over WebSocket. JCasC creates the node. It does not let us 
 agent secret. The agent entrypoint waits for the controller, authenticates as the local
 admin, and reads the secret from `computer/<name>/jenkins-agent.jnlp`. That is a process,
 not a UI click. The admin password is in the agent environment for that fetch. It comes
-from `.env`, not from git. The TCP agent port is disabled (`JENKINS_SLAVE_AGENT_PORT=-1`);
-WebSocket uses the HTTP port.
+from `.env`, not from git. The image's `jenkins-agent` already turns `JENKINS_URL` and
+`JENKINS_AGENT_NAME` into flags. The entrypoint only exports the secret and
+`JENKINS_WEB_SOCKET=true`. Passing `-url` again makes remoting reject the launch. The TCP
+agent port is disabled (`JENKINS_SLAVE_AGENT_PORT=-1`); WebSocket uses the HTTP port.
 
 Jenkins is published on host port 8081. Port 8080 stays the PipelineIQ service.
 `PIPELINEIQ_URL` inside the agent network is `http://pipelineiq-server:8080`.

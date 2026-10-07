@@ -197,6 +197,7 @@ EOF
 
 dump_logs() {
   docker compose --env-file .env logs --tail 200 > p2-compose-logs.txt || true
+  docker compose --env-file .env logs --tail 80 agent > p2-agent.log || true
   docker compose --env-file .env ps > p2-compose-ps.txt || true
 }
 
@@ -251,7 +252,8 @@ for i in $(seq 1 60); do
   fi
   if [ "$i" -eq 60 ]; then
     echo "agent did not connect" >&2
-    printf '%s\n' "$body" >&2
+    printf '%s\n' "$body" > p2-agent-api.json
+    docker compose --env-file .env logs --tail 80 agent >&2 || true
     exit 1
   fi
   sleep 5
