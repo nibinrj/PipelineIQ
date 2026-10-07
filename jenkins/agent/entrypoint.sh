@@ -24,6 +24,9 @@ if [ -z "$secret" ]; then
     fi
     secret=""
     i=$((i + 1))
+    if [ $((i % 10)) -eq 0 ]; then
+      echo "pipelineiq-agent: still waiting for the inbound secret (${i})" >&2
+    fi
     sleep 2
   done
 fi
