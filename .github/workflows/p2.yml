@@ -66,6 +66,30 @@ jobs:
           set -o pipefail
           bash .github/scripts/p2-stack.sh 2>&1 | tee p2-script.log
 
+      - name: Post the evidence
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - << 'PY'
+          from pathlib import Path
+          parts = [
+              "P2 stack check passed.",
+              "",
+              "## API response",
+              "```json",
+              Path("p2-api.json").read_text(),
+              "```",
+              "",
+              "## docker stats",
+              "```",
+              Path("p2-stats.txt").read_text(),
+              "```",
+          ]
+          Path("/tmp/p2-ok.md").write_text("\n".join(parts)[:60000])
+          PY
+          gh pr comment 1 --body-file /tmp/p2-ok.md
+
       - name: Post the stack log on failure
         if: failure()
         env:
