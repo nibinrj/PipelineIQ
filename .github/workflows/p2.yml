@@ -58,7 +58,27 @@ jobs:
         run: mvn -B -f shared-library/test/pom.xml test
 
       - name: Stack, lab build, API response
-        run: bash .github/scripts/p2-stack.sh
+        run: |
+          set -o pipefail
+          bash .github/scripts/p2-stack.sh 2>&1 | tee p2-script.log
+
+      - name: Post the stack log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "P2 stack step failed on ${GITHUB_SHA}."
+            echo
+            echo '```'
+            tail -n 180 p2-script.log 2>/dev/null || true
+            echo '```'
+            echo
+            echo '```'
+            tail -n 120 p2-compose-logs.txt 2>/dev/null || true
+            echo '```'
+          } > /tmp/p2-fail.md
+          gh pr comment 1 --body-file /tmp/p2-fail.md
 
       - uses: actions/upload-artifact@v4
         if: always()

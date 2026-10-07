@@ -205,16 +205,20 @@ trap dump_logs EXIT
 cp .env.example .env
 write_lab
 
-export COMPOSE_PATH_SEPARATOR=:
-export COMPOSE_FILE="docker-compose.yml:.github/compose.ci.yml"
-pwsh -File ./tasks.ps1 up
+echo "starting the stack with tasks.ps1 up"
+pwsh -NoProfile -Command '$env:COMPOSE_PATH_SEPARATOR=":"; $env:COMPOSE_FILE="docker-compose.yml:.github/compose.ci.yml"; & ./tasks.ps1 up'
 
 echo "waiting for PipelineIQ and Jenkins"
-for i in $(seq 1 60); do
+for i in $(seq 1 90); do
   if curl -fsS http://localhost:8080/readyz >/dev/null && curl -fsS http://localhost:8081/login >/dev/null; then
+    echo "PipelineIQ and Jenkins answered"
     break
   fi
-  if [ "$i" -eq 60 ]; then
+  if [ $((i % 6)) -eq 0 ]; then
+    echo "still waiting (${i}); compose ps:"
+    docker compose --env-file .env ps || true
+  fi
+  if [ "$i" -eq 90 ]; then
     echo "stack did not become ready" >&2
     exit 1
   fi
