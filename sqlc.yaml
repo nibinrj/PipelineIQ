@@ -1,0 +1,29 @@
+version: "2"
+sql:
+  - engine: postgresql
+    queries: queries
+    schema: migrations
+    gen:
+      go:
+        package: store
+        out: internal/store
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true
+        emit_empty_slices: true
+        overrides:
+          - db_type: timestamptz
+            go_type:
+              type: time.Time
+          - db_type: timestamptz
+            nullable: true
+            go_type:
+              type: "*time.Time"
+          - db_type: jsonb
+            go_type:
+              import: encoding/json
+              type: RawMessage
+          - db_type: jsonb
+            nullable: true
+            go_type:
+              import: encoding/json
+              type: RawMessage

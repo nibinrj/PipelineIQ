@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: PipelineIQ
+    uid: pipelineiq-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: pipelineiq
+    isDefault: true
+    editable: false
+    jsonData:
+      database: pipelineiq
+      sslmode: disable
+      postgresVersion: 1800
+      timescaledb: false
+    secureJsonData:
+      # Grafana expands $__env{NAME} from the container environment.
+      password: $__env{POSTGRES_PASSWORD}
