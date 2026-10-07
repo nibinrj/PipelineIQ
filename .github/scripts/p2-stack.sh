@@ -226,6 +226,8 @@ for i in $(seq 1 90); do
   fi
   if [ "$i" -eq 90 ]; then
     echo "stack did not become ready; readyz=${ready} login=${login}" >&2
+    echo "---- jenkins errors ----"
+    docker compose --env-file .env logs jenkins 2>&1 | grep -E 'SEVERE|Error|ERROR|Failed|Exception|Configuration as Code|casc' | head -60 || true
     exit 1
   fi
   sleep 5

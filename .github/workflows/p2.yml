@@ -73,16 +73,21 @@ jobs:
         run: |
           python3 - << 'PY'
           from pathlib import Path
-          lines = []
+          needles = ("readyz", "login=", "SEVERE", "Error", "ERROR", "Failed", "Exception", "Caused by", "did not", "Configuration", "casc", "plugin", "exit code")
+          chunks = ["P2 stack step failed."]
           for name in ("p2-script.log", "p2-compose-logs.txt"):
               path = Path(name)
-              if path.exists():
-                  lines.extend(path.read_text(errors="replace").splitlines()[-80:])
-          for line in lines[-80:]:
-              safe = line.replace("%", "%25").replace("\r", "%0D")[:400]
-              print(f"::error title=p2::{safe}")
+              if not path.exists():
+                  continue
+              lines = path.read_text(errors="replace").splitlines()
+              picked = [line for line in lines if any(n in line for n in needles)]
+              chunks.append("## " + name)
+              chunks.append("```")
+              chunks.extend(picked[:80])
+              chunks.append("```")
+          Path("/tmp/p2-fail.md").write_text("\n".join(chunks)[:60000])
           PY
-          gh pr comment 1 --body-file <(printf '%s\n' 'P2 stack step failed. See the check annotations.') || true
+          gh pr comment 1 --body-file /tmp/p2-fail.md
 
       - uses: actions/upload-artifact@v4
         if: always()
