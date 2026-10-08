@@ -156,7 +156,7 @@ func (s *Service) Apply(ctx context.Context, report Report) (Build, error) {
 	if err := q.DeleteTestRunsByBuild(ctx, buildID); err != nil {
 		return Build{}, fmt.Errorf("delete test runs: %w", err)
 	}
-	for _, stage := range report.Stages {
+	for _, stage := range dedupeStages(report.Stages) {
 		if err := q.InsertStageRun(ctx, store.InsertStageRunParams{
 			BuildID:    buildID,
 			Name:       stage.Name,
@@ -201,6 +201,26 @@ func (s *Service) Apply(ctx context.Context, report Report) (Build, error) {
 		return Build{}, fmt.Errorf("commit: %w", err)
 	}
 	return s.Get(ctx, buildID)
+}
+
+// dedupeStages keeps the last row for each stage name. A reused workspace can
+// upload the previous build's timings under the same name, and the unique
+// constraint would otherwise roll the test runs back with it.
+func dedupeStages(in []Stage) []Stage {
+	if len(in) < 2 {
+		return in
+	}
+	index := map[string]int{}
+	out := make([]Stage, 0, len(in))
+	for _, stage := range in {
+		if i, ok := index[stage.Name]; ok {
+			out[i] = stage
+			continue
+		}
+		index[stage.Name] = len(out)
+		out = append(out, stage)
+	}
+	return out
 }
 
 // Get loads a build for the debug endpoint.

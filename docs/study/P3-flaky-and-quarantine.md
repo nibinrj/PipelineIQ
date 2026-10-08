@@ -25,8 +25,10 @@ generated excludes file. The syntax is the one P1 checked.
 
 `timedStage` parses `stages.json` in an `@NonCPS` method. `JsonSlurper` is not
 serializable, and a library step that calls `timedStage` otherwise cannot record
-the stage. The first quarantine-loop console showed that exception; the rows were
-still ingested from the Surefire files.
+the stage. The file is also reset when `BUILD_NUMBER` changes. The agent workspace
+is reused, and a leftover file makes the next build upload two rows with the same
+stage name. That unique violation rolls the whole ingest back, so the flaky runs
+never reach R1.
 
 `catchError` is called with `stageResult: 'UNSTABLE'` and `buildResult` set to
 `currentBuild.currentResult`. That keeps the build result where it was before the

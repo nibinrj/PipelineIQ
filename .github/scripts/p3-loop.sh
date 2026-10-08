@@ -32,6 +32,7 @@ cat > p3-job.xml << 'EOF'
 node('linux') {
   def result = 'SUCCESS'
   try {
+    sh 'rm -f stages.json pipelineiq-stages.build'
     sh 'cp -R /lab/. .'
     quarantineAwareTests(
       repository: 'nibinrj/pipelineiq-lab',
@@ -108,6 +109,13 @@ curl -fsS \
   -H "Authorization: Bearer ${PIPELINEIQ_INGEST_KEY}" \
   "http://localhost:8080/api/v1/builds/${build_id}" | python3 -m json.tool > p3-build.json
 
+echo "stored outcomes:"
+docker compose --env-file .env exec -T postgres \
+  psql -U pipelineiq -d pipelineiq -tAc \
+  "select b.build_number || ' ' || coalesce(tr.outcome, 'none') || ' ' || coalesce(tr.stage, '') || ' infra=' || b.infra_failure::text from build b left join test_run tr on tr.build_id = b.id left join test_case tc on tc.id = tr.test_case_id where b.job_name = 'lab-quarantine' and (tc.method_name = 'failsAboutOneInFive' or tc.method_name is null) order by b.build_number, tr.stage" \
+  > p3-outcomes.txt || true
+cat p3-outcomes.txt
+
 echo "quarantine API:"
 cat p3-quarantine.json
 echo "console lines from build 12:"
@@ -119,7 +127,12 @@ doc = json.load(open("p3-quarantine.json"))
 active = doc.get("active") or []
 match = [item for item in active if item.get("method_name") == "failsAboutOneInFive"]
 if not match:
-    raise SystemExit("no quarantined random test: " + json.dumps(active))
+    outcomes = ""
+    try:
+        outcomes = open("p3-outcomes.txt", errors="replace").read().strip()
+    except OSError:
+        outcomes = ""
+    raise SystemExit("no quarantined random test: " + json.dumps(active) + " outcomes: " + outcomes.replace("\n", " | "))
 console = open("p3-console-12.txt", errors="replace").read()
 if "failsAboutOneInFive" not in console:
     raise SystemExit("build 12 console does not mention the quarantined test")
