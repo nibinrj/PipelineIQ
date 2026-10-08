@@ -20,7 +20,7 @@ func run(args []string) int {
 	case "report":
 		return report(args[1:])
 	case "quarantine":
-		return quarantine(args[1:])
+		return runQuarantine(args[1:])
 	case "-h", "--help", "help":
 		fmt.Fprintln(os.Stderr, "usage: pipelineiq report | quarantine")
 		return 0

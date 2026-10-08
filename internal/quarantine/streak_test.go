@@ -21,7 +21,11 @@ func TestStreak(t *testing.T) {
 		t.Fatalf("nothing after the creating build = %d", got)
 	}
 	skipped := []StageRun{{BuildID: 2, Outcome: "SKIPPED"}, {BuildID: 3, Outcome: "PASSED"}}
-	if got := Streak(skipped, 1); got != 0 {
-		t.Fatalf("skip breaks the streak, got %d", got)
+	if got := Streak(skipped, 1); got != 1 {
+		t.Fatalf("a pass after an older skip counts, got %d", got)
+	}
+	newestSkip := []StageRun{{BuildID: 2, Outcome: "PASSED"}, {BuildID: 3, Outcome: "SKIPPED"}}
+	if got := Streak(newestSkip, 1); got != 0 {
+		t.Fatalf("a skip as the newest run breaks the streak, got %d", got)
 	}
 }

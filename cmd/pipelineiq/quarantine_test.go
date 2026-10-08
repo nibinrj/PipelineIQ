@@ -25,7 +25,7 @@ func TestQuarantineFormats(t *testing.T) {
 
 	dir := t.TempDir()
 	excludes := filepath.Join(dir, "excludes.txt")
-	if code := quarantine([]string{"--server", srv.URL, "--key", "key", "--repo", "nibinrj/pipelineiq-lab", "--format", "surefire-excludes", "--out", excludes}); code != 0 {
+	if code := runQuarantine([]string{"--server", srv.URL, "--key", "key", "--repo", "nibinrj/pipelineiq-lab", "--format", "surefire-excludes", "--out", excludes}); code != 0 {
 		t.Fatalf("excludes exit %d", code)
 	}
 	got, err := os.ReadFile(excludes)
@@ -37,7 +37,7 @@ func TestQuarantineFormats(t *testing.T) {
 	}
 
 	only := filepath.Join(dir, "only.txt")
-	if code := quarantine([]string{"--server", srv.URL, "--key", "key", "--repo", "nibinrj/pipelineiq-lab", "--format", "surefire-only", "--out", only}); code != 0 {
+	if code := runQuarantine([]string{"--server", srv.URL, "--key", "key", "--repo", "nibinrj/pipelineiq-lab", "--format", "surefire-only", "--out", only}); code != 0 {
 		t.Fatalf("only exit %d", code)
 	}
 	got, err = os.ReadFile(only)
@@ -52,7 +52,7 @@ func TestQuarantineFormats(t *testing.T) {
 func TestQuarantineUnreachableWritesEmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "excludes.txt")
-	code := quarantine([]string{
+	code := runQuarantine([]string{
 		"--server", "http://127.0.0.1:1",
 		"--key", "key",
 		"--repo", "nibinrj/pipelineiq-lab",
@@ -78,7 +78,7 @@ func TestQuarantineUnauthorizedDoesNotWrite(t *testing.T) {
 	defer srv.Close()
 	dir := t.TempDir()
 	out := filepath.Join(dir, "excludes.txt")
-	code := quarantine([]string{"--server", srv.URL, "--key", "bad", "--repo", "nibinrj/pipelineiq-lab", "--format", "surefire-only", "--out", out})
+	code := runQuarantine([]string{"--server", srv.URL, "--key", "bad", "--repo", "nibinrj/pipelineiq-lab", "--format", "surefire-only", "--out", out})
 	if code == 0 {
 		t.Fatal("401 exited 0")
 	}

@@ -112,7 +112,7 @@ func TestReportCases(t *testing.T) {
 }
 
 func TestQuarantineStub(t *testing.T) {
-	if code := quarantine(nil); code != 0 {
+	if code := runQuarantine(nil); code != 0 {
 		t.Fatalf("code = %d", code)
 	}
 }

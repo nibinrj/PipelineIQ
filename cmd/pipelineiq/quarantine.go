@@ -27,7 +27,7 @@ type quarantineConfig struct {
 	Timeout time.Duration
 }
 
-func quarantine(args []string) int {
+func runQuarantine(args []string) int {
 	cfg, err := parseQuarantine(args, os.Stderr)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "pipelineiq: %v\n", err)
