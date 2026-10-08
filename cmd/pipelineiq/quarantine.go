@@ -30,14 +30,14 @@ type quarantineConfig struct {
 func runQuarantine(args []string) int {
 	cfg, err := parseQuarantine(args, os.Stderr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pipelineiq: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "pipelineiq: %v\n", err)
 		return 2
 	}
 	if err := cfg.run(context.Background()); err != nil {
-		fmt.Fprintf(cfg.Stderr, "pipelineiq: %v\n", err)
+		_, _ = fmt.Fprintf(cfg.Stderr, "pipelineiq: %v\n", err)
 		if cfg.unreachable(err) {
 			if writeErr := cfg.write(""); writeErr != nil {
-				fmt.Fprintf(cfg.Stderr, "pipelineiq: %v\n", writeErr)
+				_, _ = fmt.Fprintf(cfg.Stderr, "pipelineiq: %v\n", writeErr)
 				return 1
 			}
 			return 0

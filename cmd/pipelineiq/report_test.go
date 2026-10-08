@@ -111,9 +111,9 @@ func TestReportCases(t *testing.T) {
 	})
 }
 
-func TestQuarantineStub(t *testing.T) {
-	if code := runQuarantine(nil); code != 0 {
-		t.Fatalf("code = %d", code)
+func TestQuarantineRequiresArgs(t *testing.T) {
+	if code := runQuarantine(nil); code != 2 {
+		t.Fatalf("code = %d, want 2", code)
 	}
 }
 
