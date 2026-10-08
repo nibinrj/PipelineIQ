@@ -61,15 +61,15 @@ type Test struct {
 
 // Build is the debug view returned by GET /api/v1/builds/{id}.
 type Build struct {
-	ID          int64       `json:"id"`
-	Repository  string      `json:"repository"`
-	JobName     string      `json:"job_name"`
-	BuildNumber int32       `json:"build_number"`
-	Branch      string      `json:"branch"`
-	PRNumber    *int32      `json:"pr_number,omitempty"`
-	CommitSHA   string      `json:"commit_sha"`
-	Result      string      `json:"result"`
-	AgentName   string      `json:"agent_name,omitempty"`
+	ID           int64       `json:"id"`
+	Repository   string      `json:"repository"`
+	JobName      string      `json:"job_name"`
+	BuildNumber  int32       `json:"build_number"`
+	Branch       string      `json:"branch"`
+	PRNumber     *int32      `json:"pr_number,omitempty"`
+	CommitSHA    string      `json:"commit_sha"`
+	Result       string      `json:"result"`
+	AgentName    string      `json:"agent_name,omitempty"`
 	LogTail      string      `json:"log_tail,omitempty"`
 	InfraFailure bool        `json:"infra_failure"`
 	InfraReason  string      `json:"infra_reason,omitempty"`

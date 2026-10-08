@@ -98,4 +98,3 @@ func reportFor(repo, job string, number int32, commit, outcome, logTail string) 
 		}},
 	}
 }
-

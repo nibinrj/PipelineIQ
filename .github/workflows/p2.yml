@@ -12,7 +12,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,6 +53,15 @@ jobs:
           if [ -n "$dirty" ]; then
             echo "$dirty"
             gofmt -d . > gofmt.diff || true
+            python3 - << 'PY'
+            import base64
+            from pathlib import Path
+            data = Path("gofmt.diff").read_bytes()
+            text = base64.b64encode(data).decode()
+            step = 3000
+            for i in range(0, len(text), step):
+                print(f"::error::GOFMTB64 {i // step} {text[i:i + step]}")
+            PY
             exit 1
           fi
           go vet ./...
@@ -97,20 +106,6 @@ jobs:
           PY
           gh pr comment 1 --body-file /tmp/p2-ok.md
 
-      - name: Post gofmt diff
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ -f gofmt.diff ]; then
-            python3 - << 'PY'
-            from pathlib import Path
-            diff = Path("gofmt.diff").read_text(errors="replace")[:50000]
-            Path("/tmp/gofmt.md").write_text("gofmt diff\n\n```diff\n" + diff + "\n```\n")
-            PY
-            gh pr comment 1 --body-file /tmp/gofmt.md
-          fi
-
       - name: Post the stack log on failure
         if: failure()
         env:
@@ -119,8 +114,11 @@ jobs:
           python3 - << 'PY'
           from pathlib import Path
           needles = ("readyz", "login=", "SEVERE", "Error", "ERROR", "Failed", "Exception", "Caused by", "did not", "Configuration", "casc", "plugin", "exit code", "library", "dubious", "Rejected", "sandbox", "createItem", "pipelineiq")
+          names = ("p3-script.log", "p2-agent.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt")
+          if not any(Path(name).exists() for name in names):
+              raise SystemExit(0)
           chunks = ["P2 stack step failed."]
-          for name in ("p3-script.log", "p2-agent.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt"):
+          for name in names:
               path = Path(name)
               if not path.exists():
                   continue

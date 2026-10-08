@@ -30,7 +30,7 @@ type Item struct {
 
 // List is the active quarantine for one repository.
 type List struct {
-	Repository string `json:"repository"`
+	Repository string  `json:"repository"`
 	Active     []Item `json:"active"`
 }
 

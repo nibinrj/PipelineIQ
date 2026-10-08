@@ -126,7 +126,9 @@ does not write a file that would hide a bad key.
 
 `quarantineAwareTests` fetches both files, runs the blocking stage with
 `surefire.excludesFile` and `failsafe.excludesFile`, then the quarantine stage with
-`-Dtest` only when the only-file has a pattern. The quarantine stage is inside
+`-Dtest` only when the only-file has a pattern. That stage also sets
+`surefire.failIfNoSpecifiedTests=false`, because `-Dtest=` is applied to every
+module and core/api do not contain the quarantined method. The quarantine stage is inside
 `catchError`. `reportBuild` is still the upload, in `post { always }` of the lab
 Jenkinsfile. The library echoes the excludes file so the Jenkins console shows the
 exclusion without a UI click.

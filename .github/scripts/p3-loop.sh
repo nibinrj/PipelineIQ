@@ -32,6 +32,7 @@ cat > p3-job.xml << 'EOF'
 node('linux') {
   def result = 'SUCCESS'
   try {
+    sh 'cp -R /lab/. .'
     quarantineAwareTests(
       repository: 'nibinrj/pipelineiq-lab',
       mavenArgs: '-Dpipelineiq.flaky.epochSecond=100 -Dpipelineiq.flaky.orderSeed=1'
@@ -86,6 +87,9 @@ wait_build() {
 
 for n in $(seq 1 20); do
   echo "starting lab-quarantine build ${n}"
+  crumb_json=$(curl -fsS -c /tmp/jcookies -b /tmp/jcookies -u "$auth" http://localhost:8081/crumbIssuer/api/json)
+  crumb_field=$(printf '%s' "$crumb_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["crumbRequestField"])')
+  crumb=$(printf '%s' "$crumb_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["crumb"])')
   curl -fsS -c /tmp/jcookies -b /tmp/jcookies -u "$auth" -H "${crumb_field}: ${crumb}" -X POST \
     "http://localhost:8081/job/lab-quarantine/build" >/dev/null
   wait_build "$n"

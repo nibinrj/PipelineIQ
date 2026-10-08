@@ -25,6 +25,7 @@ class QuarantineAwareTestsTest extends BasePipelineTest {
         ])
         binding.setVariable('currentBuild', [currentResult: 'SUCCESS'])
         helper.registerAllowedMethod('echo', [String]) { String message -> }
+        helper.registerAllowedMethod('echo', [GString]) { message -> }
         helper.registerAllowedMethod('pwd', []) { -> '/workspace' }
         helper.registerAllowedMethod('writeFile', [Map]) { Map args -> files[args.file] = args.text }
         helper.registerAllowedMethod('fileExists', [String]) { String name -> files.containsKey(name) }

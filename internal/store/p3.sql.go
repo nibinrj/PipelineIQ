@@ -167,16 +167,16 @@ ORDER BY tc.class_name, tc.method_name, q.id
 `
 
 type ListActiveQuarantineByRepoRow struct {
-	ID                 int64
-	TestCaseID         int64
-	ReasonRule         string
-	Evidence           string
-	QuarantinedAt      time.Time
-	ConsecutivePasses  int32
-	Manual             bool
-	State              string
-	ClassName          string
-	MethodName         string
+	ID                int64
+	TestCaseID        int64
+	ReasonRule        string
+	Evidence          string
+	QuarantinedAt     time.Time
+	ConsecutivePasses int32
+	Manual            bool
+	State             string
+	ClassName         string
+	MethodName        string
 }
 
 func (q *Queries) ListActiveQuarantineByRepo(ctx context.Context, repositoryID int64) ([]ListActiveQuarantineByRepoRow, error) {

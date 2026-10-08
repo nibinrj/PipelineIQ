@@ -41,10 +41,13 @@ def call(Map args = [:]) {
     def patterns = quarantinePatterns(fileExists(only) ? readFile(only) : '')
     if (patterns) {
         echo "pipelineiq quarantine stage: ${patterns}"
-        catchError(buildResult: currentBuild.currentResult, stageResult: 'UNSTABLE') {
+        def keep = currentBuild.currentResult ?: 'SUCCESS'
+        // -Dtest= is applied to every module. Modules that do not contain the
+        // method must not fail the reactor before flaky-lab runs.
+        catchError(buildResult: keep, stageResult: 'UNSTABLE') {
             timedStage('Quarantine') {
                 try {
-                    sh "mvn -B -Dpipelineiq.flaky.seed=${seed} ${extra} -Dtest=${patterns} test"
+                    sh "mvn -B -Dpipelineiq.flaky.seed=${seed} ${extra} -Dsurefire.failIfNoSpecifiedTests=false -Dtest=${patterns} test"
                 } finally {
                     moveReports('quarantine-reports')
                 }
@@ -68,14 +71,14 @@ def moveReports(String destName) {
 }
 
 def quarantinePatterns(String text) {
-    def lines = []
-    if (text == null) {
+    if (!text) {
         return ''
     }
-    text.eachLine { line ->
+    def lines = []
+    for (line in text.split('\n')) {
         def trimmed = line.trim()
         if (trimmed && !trimmed.startsWith('#')) {
-            lines << trimmed
+            lines.add(trimmed)
         }
     }
     return lines.join(',')

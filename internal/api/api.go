@@ -270,11 +270,11 @@ func readReport(r *http.Request) (ingest.Report, error) {
 			}
 			// ParseMultipartForm keeps only the base name. The module is the
 			// directory before /target/, so the original relative path is required.
-		module := surefire.ModuleFromFilename(name)
-		stage := surefire.StageFromFilename(name)
-		for _, one := range cases {
-			report.Tests = append(report.Tests, ingest.Test{Module: module, Stage: stage, Case: one})
-		}
+			module := surefire.ModuleFromFilename(name)
+			stage := surefire.StageFromFilename(name)
+			for _, one := range cases {
+				report.Tests = append(report.Tests, ingest.Test{Module: module, Stage: stage, Case: one})
+			}
 		}
 	}
 	return report, nil
