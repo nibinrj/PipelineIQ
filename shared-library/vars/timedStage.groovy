@@ -1,3 +1,4 @@
+import com.cloudbees.groovy.cps.NonCPS
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
@@ -18,20 +19,10 @@ def call(String name, Closure body) {
     } finally {
         def duration = System.currentTimeMillis() - startedMs
         try {
-            def existing = []
-            if (fileExists('stages.json')) {
-                def parsed = new JsonSlurper().parseText(readFile('stages.json'))
-                if (parsed instanceof List) {
-                    existing = parsed
-                }
-            }
-            existing << [
-                name       : name,
-                started_at : startedAt,
-                duration_ms: duration,
-                result     : result,
-            ]
-            writeFile file: 'stages.json', text: JsonOutput.toJson(existing)
+            // JsonSlurper is not serializable. Parsing has to stay out of the CPS
+            // continuation, or a library step that calls timedStage cannot record stages.
+            def text = fileExists('stages.json') ? readFile('stages.json') : ''
+            writeFile file: 'stages.json', text: appendStage(text, name, startedAt, duration, result)
         } catch (writeErr) {
             echo "pipelineiq timedStage could not write stages.json: ${writeErr}"
         }
@@ -39,4 +30,22 @@ def call(String name, Closure body) {
     if (thrown != null) {
         throw thrown
     }
+}
+
+@NonCPS
+def appendStage(String text, String name, String startedAt, long duration, String result) {
+    def existing = []
+    if (text) {
+        def parsed = new JsonSlurper().parseText(text)
+        if (parsed instanceof List) {
+            existing = new ArrayList(parsed)
+        }
+    }
+    existing.add([
+        name       : name,
+        started_at : startedAt,
+        duration_ms: duration,
+        result     : result,
+    ])
+    return JsonOutput.toJson(existing)
 }

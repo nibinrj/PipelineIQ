@@ -23,6 +23,11 @@ and moves the new reports to `target/quarantine-reports`. The CLI uploads both. 
 is the directory name, not a second HTTP field. I have not executed Surefire against a
 generated excludes file. The syntax is the one P1 checked.
 
+`timedStage` parses `stages.json` in an `@NonCPS` method. `JsonSlurper` is not
+serializable, and a library step that calls `timedStage` otherwise cannot record
+the stage. The first quarantine-loop console showed that exception; the rows were
+still ingested from the Surefire files.
+
 `catchError` is called with `stageResult: 'UNSTABLE'` and `buildResult` set to
 `currentBuild.currentResult`. That keeps the build result where it was before the
 quarantine stage and marks only the stage unstable. I did not re-read the step source
