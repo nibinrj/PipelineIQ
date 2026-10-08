@@ -1,0 +1,6 @@
+.env
+bin/
+*.exe
+coverage.out
+*.out
+ci-lab/

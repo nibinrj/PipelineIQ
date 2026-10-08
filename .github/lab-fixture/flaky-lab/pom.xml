@@ -1,0 +1,28 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.pipelineiq.lab</groupId>
+    <artifactId>pipelineiq-lab</artifactId>
+    <version>0.1.0</version>
+  </parent>
+  <artifactId>flaky-lab</artifactId>
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <!-- One rerun. A first-attempt failure that then passes is FLAKY, which is R1. -->
+          <rerunFailingTestsCount>1</rerunFailingTestsCount>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

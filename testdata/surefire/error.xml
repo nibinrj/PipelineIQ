@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written to the Surefire 3.6.0 element names. Not captured from a Surefire run. -->
+<testsuite name="io.pipelineiq.lab.api.ApiTest" tests="1" failures="0" errors="1" skipped="0">
+  <testcase name="serves" classname="io.pipelineiq.lab.api.ApiTest" time="0.020">
+    <error message="boom" type="java.lang.IllegalStateException">java.lang.IllegalStateException: boom
+	at io.pipelineiq.lab.api.ApiTest.serves(ApiTest.java:18)
+</error>
+  </testcase>
+</testsuite>

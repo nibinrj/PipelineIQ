@@ -1,0 +1,6 @@
+# Extra mount for the verification job only. tasks.ps1 up does not load this
+# file unless COMPOSE_FILE includes it. The lab stays out of the product image.
+services:
+  agent:
+    volumes:
+      - ./ci-lab:/lab:ro

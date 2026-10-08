@@ -1,0 +1,121 @@
+# Local stack. Postgres 18.6 is the version used to write migrations/00001_init.sql.
+# Jenkins and the agent are P2. Memory limits are limits, not measured usage.
+# Plan: controller 1 GB, agent 1.5 GB, server 64 MB, Postgres 384 MB, Grafana 256 MB.
+# 1024 + 1536 + 64 + 384 + 256 = 3264 MB.
+
+name: pipelineiq
+
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: pipelineiq
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: pipelineiq
+    ports:
+      - "5432:5432"
+    mem_limit: 384m
+    memswap_limit: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipelineiq -d pipelineiq"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes:
+      # Postgres 18 official image stores data in /var/lib/postgresql/18/docker.
+      # The image VOLUME is /var/lib/postgresql. Mounting the old
+      # /var/lib/postgresql/data path makes the entrypoint refuse to start.
+      - postgres-data:/var/lib/postgresql
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - "3000:3000"
+    mem_limit: 256m
+    memswap_limit: 256m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+
+  pipelineiq-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PIPELINEIQ_HTTP_ADDR: ":8080"
+      PIPELINEIQ_DATABASE_URL: postgres://pipelineiq:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/pipelineiq?sslmode=disable
+      PIPELINEIQ_SHUTDOWN_TIMEOUT: 10s
+      PIPELINEIQ_READY_TIMEOUT: 2s
+      PIPELINEIQ_LOG_LEVEL: info
+      PIPELINEIQ_INGEST_KEY: ${PIPELINEIQ_INGEST_KEY:?set PIPELINEIQ_INGEST_KEY in .env}
+      # Soft cap under the 64m cgroup limit. Go 1.19+ also reads the cgroup limit.
+      GOMEMLIMIT: 48MiB
+    ports:
+      - "8080:8080"
+    mem_limit: 64m
+    memswap_limit: 64m
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  jenkins:
+    build:
+      context: ./jenkins/controller
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    environment:
+      # A known local password. Not a secret. Skip the setup wizard.
+      JENKINS_ADMIN_ID: ${JENKINS_ADMIN_ID:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set JENKINS_ADMIN_PASSWORD in .env}
+      # Empty is rejected by some credential forms. A placeholder fails the scan
+      # until a real fine-grained token is set. It does not stop the controller.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-local-unset}
+      JENKINS_SLAVE_AGENT_PORT: "-1"
+      PIPELINEIQ_INGEST_KEY: ${PIPELINEIQ_INGEST_KEY:?set PIPELINEIQ_INGEST_KEY in .env}
+      PIPELINEIQ_LIBRARY_REF: ${PIPELINEIQ_LIBRARY_REF:-main}
+      JAVA_OPTS: >-
+        -Djenkins.install.runSetupWizard=false
+        -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
+      CASC_JENKINS_CONFIG: /var/jenkins_casc/jenkins.yaml
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - jenkins-home:/var/jenkins_home
+      - ./jenkins/casc:/var/jenkins_casc:ro
+      - ./jenkins/jobs:/var/jenkins_jobs:ro
+      # file:// checkout of the shared library. The agent has the same mount.
+      - .:/pipelineiq:ro
+
+  agent:
+    build:
+      context: .
+      dockerfile: jenkins/agent/Dockerfile
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    depends_on:
+      jenkins:
+        condition: service_started
+    environment:
+      JENKINS_URL: http://jenkins:8080
+      JENKINS_AGENT_NAME: agent
+      JENKINS_ADMIN_USER: ${JENKINS_ADMIN_ID:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?set JENKINS_ADMIN_PASSWORD in .env}
+      PIPELINEIQ_URL: http://pipelineiq-server:8080
+      # Library checkout can run on the agent. file:// is refused without this.
+      JAVA_OPTS: "-Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
+    volumes:
+      # Same repo the controller uses for the shared library. Read-only.
+      - .:/pipelineiq:ro
+    # The Docker socket is not mounted. A missing socket would stop the agent,
+    # and the P2 lab does not start sibling containers.
+
+volumes:
+  postgres-data:
+  jenkins-home:

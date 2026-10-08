@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Every run failed. The first failure stays failure. Later failures are rerunFailure. -->
+<testsuite name="io.pipelineiq.lab.flaky.FlipTest" tests="1" failures="1" errors="0" skipped="0">
+  <testcase name="always" classname="io.pipelineiq.lab.flaky.FlipTest" time="0.008">
+    <failure message="nope" type="java.lang.AssertionError">java.lang.AssertionError: nope
+	at io.pipelineiq.lab.flaky.FlipTest.always(FlipTest.java:30)
+</failure>
+    <rerunFailure message="nope" type="java.lang.AssertionError">java.lang.AssertionError: nope
+	at io.pipelineiq.lab.flaky.FlipTest.always(FlipTest.java:30)
+</rerunFailure>
+    <rerunFailure message="nope" type="java.lang.AssertionError">java.lang.AssertionError: nope
+	at io.pipelineiq.lab.flaky.FlipTest.always(FlipTest.java:30)
+</rerunFailure>
+  </testcase>
+</testsuite>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written to the Surefire 3.6.0 element names. Not captured from a Surefire run. -->
+<testsuite name="io.pipelineiq.lab.core.CoreTest" tests="1" failures="0" errors="0" skipped="1">
+  <testcase name="later" classname="io.pipelineiq.lab.core.CoreTest" time="0">
+    <skipped message="not in P2"/>
+  </testcase>
+</testsuite>

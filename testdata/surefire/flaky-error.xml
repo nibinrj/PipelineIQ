@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A rerun passed after an error. Surefire records flakyError and no error element. -->
+<testsuite name="io.pipelineiq.lab.flaky.FlipTest" tests="1" failures="0" errors="0" skipped="0">
+  <testcase name="blips" classname="io.pipelineiq.lab.flaky.FlipTest" time="0.015">
+    <flakyError message="closed" type="java.lang.IllegalStateException">java.lang.IllegalStateException: closed
+	at io.pipelineiq.lab.flaky.FlipTest.blips(FlipTest.java:20)
+</flakyError>
+  </testcase>
+</testsuite>

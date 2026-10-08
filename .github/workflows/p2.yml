@@ -1,0 +1,153 @@
+name: P2 verification
+
+on:
+  push:
+    branches: [arena/750d568c-pipelineiq]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.1"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Maven
+        run: |
+          curl -fsSL -o /tmp/maven.tgz https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.tar.gz
+          sudo tar -xzf /tmp/maven.tgz -C /opt
+          echo /opt/apache-maven-3.9.16/bin >> "$GITHUB_PATH"
+
+      - name: golangci-lint
+        run: |
+          curl -fsSL -o /tmp/lint.tgz https://github.com/golangci/golangci-lint/releases/download/v2.14.0/golangci-lint-2.14.0-linux-amd64.tar.gz
+          tar -xzf /tmp/lint.tgz -C /tmp
+          sudo mv /tmp/golangci-lint-2.14.0-linux-amd64/golangci-lint /usr/local/bin/golangci-lint
+
+      - name: PowerShell
+        run: |
+          curl -fsSL -o /tmp/pwsh.tar.gz https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/powershell-7.6.6-linux-x64.tar.gz
+          sudo mkdir -p /opt/pwsh
+          sudo tar -xzf /tmp/pwsh.tar.gz -C /opt/pwsh
+          sudo ln -sf /opt/pwsh/pwsh /usr/local/bin/pwsh
+
+      - name: Go lint and tests
+        run: |
+          set +e
+          gofmt -l . > gofmt-list.txt
+          gofmt -d . > gofmt.diff
+          go vet ./... > vet.out 2>&1
+          echo $? > vet.status
+          golangci-lint run > lint.out 2>&1
+          echo $? > lint.status
+          go test -race -count=1 -timeout 180s ./... > test.out 2>&1
+          echo $? > test.status
+          set -e
+          cat vet.out lint.out test.out
+          if [ -s gofmt-list.txt ] || [ "$(cat vet.status)" != 0 ] || [ "$(cat lint.status)" != 0 ] || [ "$(cat test.status)" != 0 ]; then
+            exit 1
+          fi
+
+      - name: JenkinsPipelineUnit
+        run: mvn -B -f shared-library/test/pom.xml test
+
+      - name: Stack, lab build, API response
+        run: |
+          set -o pipefail
+          bash .github/scripts/p2-stack.sh 2>&1 | tee p2-script.log
+
+      - name: Quarantine loop
+        run: |
+          set -o pipefail
+          bash .github/scripts/p3-loop.sh 2>&1 | tee p3-script.log
+
+      - name: Post the evidence
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - << 'PY'
+          from pathlib import Path
+          parts = ["P2 stack check passed.", ""]
+          for title, name, fence in (
+              ("API response", "p2-api.json", "json"),
+              ("docker stats", "p2-stats.txt", ""),
+              ("Quarantine API", "p3-quarantine.json", "json"),
+          ):
+              path = Path(name)
+              if not path.exists():
+                  continue
+              parts.extend(["## " + title, "```" + fence, path.read_text()[:20000], "```", ""])
+          console = Path("p3-console-12.txt")
+          if console.exists():
+              lines = [line for line in console.read_text(errors="replace").splitlines() if "pipelineiq" in line or "failsAboutOneInFive" in line or "Tests run:" in line]
+              parts.extend(["## Jenkins console (build 12)", "```", "\n".join(lines[:40]), "```"])
+          Path("/tmp/p2-ok.md").write_text("\n".join(parts)[:60000])
+          PY
+          gh pr comment 1 --body-file /tmp/p2-ok.md
+
+      - name: Post the stack log on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - << 'PY'
+          from pathlib import Path
+          needles = ("readyz", "login=", "SEVERE", "Error", "ERROR", "Failed", "Exception", "Caused by", "did not", "Configuration", "casc", "plugin", "exit code", "library", "dubious", "Rejected", "sandbox", "createItem", "pipelineiq")
+          names = ("gofmt-list.txt", "gofmt.diff", "vet.out", "lint.out", "test.out", "p3-script.log", "p2-agent.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt")
+          present = [name for name in names if Path(name).exists() and Path(name).stat().st_size]
+          if not present:
+              raise SystemExit(0)
+          chunks = ["Verification step failed."]
+          for name in present:
+              path = Path(name)
+              if not path.exists():
+                  continue
+              lines = path.read_text(errors="replace").splitlines()
+              if name in ("p2-agent.log", "p3-script.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt"):
+                  if name == "p2-agent.log" or name == "p3-script.log":
+                      picked = lines[-40:]
+                  else:
+                      picked = [line for line in lines if any(n in line for n in needles)][-60:]
+              else:
+                  picked = lines[-80:]
+              chunks.append("## " + name)
+              chunks.append("```")
+              chunks.extend(picked)
+              chunks.append("```")
+          Path("/tmp/p2-fail.md").write_text("\n".join(chunks)[:60000])
+          PY
+          if [ -f /tmp/p2-fail.md ]; then
+            gh pr comment 1 --body-file /tmp/p2-fail.md
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p2-evidence
+          if-no-files-found: ignore
+          path: |
+            p2-api.json
+            p2-stats.txt
+            p2-jenkins.log
+            p2-compose-logs.txt
+            p2-compose-ps.txt
+            p3-quarantine.json
+            p3-build.json
+            p3-console-12.txt
+            p3-script.log

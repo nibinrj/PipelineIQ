@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SUREFIRE-1627: tests and failures count the reruns. The body has one testcase. -->
+<testsuite name="io.pipelineiq.lab.flaky.FlipTest" tests="6" failures="6" errors="0" skipped="0">
+  <testcase name="onlyOne" classname="io.pipelineiq.lab.flaky.FlipTest" time="0.010">
+    <failure message="nope" type="java.lang.AssertionError">java.lang.AssertionError: nope
+	at io.pipelineiq.lab.flaky.FlipTest.onlyOne(FlipTest.java:8)
+</failure>
+    <rerunFailure message="nope" type="java.lang.AssertionError"><![CDATA[at io.pipelineiq.lab.flaky.FlipTest.onlyOne(FlipTest.java:8)]]></rerunFailure>
+    <rerunFailure message="nope" type="java.lang.AssertionError"><![CDATA[at io.pipelineiq.lab.flaky.FlipTest.onlyOne(FlipTest.java:8)]]></rerunFailure>
+    <rerunFailure message="nope" type="java.lang.AssertionError"><![CDATA[at io.pipelineiq.lab.flaky.FlipTest.onlyOne(FlipTest.java:8)]]></rerunFailure>
+    <rerunFailure message="nope" type="java.lang.AssertionError"><![CDATA[at io.pipelineiq.lab.flaky.FlipTest.onlyOne(FlipTest.java:8)]]></rerunFailure>
+    <rerunFailure message="nope" type="java.lang.AssertionError"><![CDATA[at io.pipelineiq.lab.flaky.FlipTest.onlyOne(FlipTest.java:8)]]></rerunFailure>
+  </testcase>
+</testsuite>
