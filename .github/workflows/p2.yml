@@ -48,25 +48,20 @@ jobs:
 
       - name: Go lint and tests
         run: |
-          set -euo pipefail
-          dirty=$(gofmt -l .)
-          if [ -n "$dirty" ]; then
-            echo "$dirty"
-            gofmt -d . > gofmt.diff || true
-            python3 - << 'PY'
-            import base64
-            from pathlib import Path
-            data = Path("gofmt.diff").read_bytes()
-            text = base64.b64encode(data).decode()
-            step = 3000
-            for i in range(0, len(text), step):
-                print(f"::error::GOFMTB64 {i // step} {text[i:i + step]}")
-            PY
+          set +e
+          gofmt -l . > gofmt-list.txt
+          gofmt -d . > gofmt.diff
+          go vet ./... > vet.out 2>&1
+          echo $? > vet.status
+          golangci-lint run > lint.out 2>&1
+          echo $? > lint.status
+          go test -race -count=1 -timeout 180s ./... > test.out 2>&1
+          echo $? > test.status
+          set -e
+          cat vet.out lint.out test.out
+          if [ -s gofmt-list.txt ] || [ "$(cat vet.status)" != 0 ] || [ "$(cat lint.status)" != 0 ] || [ "$(cat test.status)" != 0 ]; then
             exit 1
           fi
-          go vet ./...
-          golangci-lint run
-          go test -race -count=1 -timeout 180s ./...
 
       - name: JenkinsPipelineUnit
         run: mvn -B -f shared-library/test/pom.xml test
@@ -114,26 +109,32 @@ jobs:
           python3 - << 'PY'
           from pathlib import Path
           needles = ("readyz", "login=", "SEVERE", "Error", "ERROR", "Failed", "Exception", "Caused by", "did not", "Configuration", "casc", "plugin", "exit code", "library", "dubious", "Rejected", "sandbox", "createItem", "pipelineiq")
-          names = ("p3-script.log", "p2-agent.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt")
-          if not any(Path(name).exists() for name in names):
+          names = ("gofmt-list.txt", "gofmt.diff", "vet.out", "lint.out", "test.out", "p3-script.log", "p2-agent.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt")
+          present = [name for name in names if Path(name).exists() and Path(name).stat().st_size]
+          if not present:
               raise SystemExit(0)
-          chunks = ["P2 stack step failed."]
-          for name in names:
+          chunks = ["Verification step failed."]
+          for name in present:
               path = Path(name)
               if not path.exists():
                   continue
               lines = path.read_text(errors="replace").splitlines()
-              if name in ("p2-agent.log", "p3-script.log"):
-                  picked = lines[-40:]
+              if name in ("p2-agent.log", "p3-script.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt"):
+                  if name == "p2-agent.log" or name == "p3-script.log":
+                      picked = lines[-40:]
+                  else:
+                      picked = [line for line in lines if any(n in line for n in needles)][-60:]
               else:
-                  picked = [line for line in lines if any(n in line for n in needles)][-60:]
+                  picked = lines[-80:]
               chunks.append("## " + name)
               chunks.append("```")
               chunks.extend(picked)
               chunks.append("```")
           Path("/tmp/p2-fail.md").write_text("\n".join(chunks)[:60000])
           PY
-          gh pr comment 1 --body-file /tmp/p2-fail.md
+          if [ -f /tmp/p2-fail.md ]; then
+            gh pr comment 1 --body-file /tmp/p2-fail.md
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()
