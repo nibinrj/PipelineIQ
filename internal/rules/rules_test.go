@@ -1,6 +1,9 @@
 package rules
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+)
 
 func run(id int64, commit, branch, outcome string, infra bool) Run {
 	return Run{BuildID: id, CommitSHA: commit, Branch: branch, Outcome: outcome, Infra: infra, Stage: "BLOCKING"}
@@ -110,10 +113,10 @@ func TestR3FiresOnThreeFlips(t *testing.T) {
 	var runs []Run
 	outcomes := []string{Passed, Failed, Passed, Failed, Passed}
 	for i := 0; i < 25; i++ {
-		runs = append(runs, run(int64(i+1), "c", "main", Passed, false))
+		runs = append(runs, run(int64(i+1), "c"+strconv.Itoa(i+1), "main", Passed, false))
 	}
 	for i, outcome := range outcomes {
-		runs = append(runs, run(int64(26+i), "c", "main", outcome, false))
+		runs = append(runs, run(int64(26+i), "flip"+strconv.Itoa(i), "main", outcome, false))
 	}
 	hit, ok := Match(runs, map[int64]bool{}, "main", th)
 	if !ok || hit.Rule != RuleR3 {
@@ -129,16 +132,16 @@ func TestR3IgnoresOtherBranchesSkipsAndInfra(t *testing.T) {
 		if i%2 == 0 {
 			outcome = Failed
 		}
-		runs = append(runs, run(i, "c", "feature", outcome, false))
+		runs = append(runs, run(i, "feature-"+strconv.FormatInt(i, 10), "feature", outcome, false))
 	}
 	for i := int64(31); i <= 40; i++ {
-		runs = append(runs, run(i, "c", "main", Failed, true))
+		runs = append(runs, run(i, "infra-"+strconv.FormatInt(i, 10), "main", Failed, true))
 	}
 	for i := int64(41); i <= 50; i++ {
-		runs = append(runs, run(i, "c", "main", Skipped, false))
+		runs = append(runs, run(i, "skip-"+strconv.FormatInt(i, 10), "main", Skipped, false))
 	}
 	for i := int64(51); i <= 55; i++ {
-		runs = append(runs, run(i, "c", "main", Passed, false))
+		runs = append(runs, run(i, "main-"+strconv.FormatInt(i, 10), "main", Passed, false))
 	}
 	if _, ok := Match(runs, map[int64]bool{}, "main", th); ok {
 		t.Fatal("PR flips, infra failures, and skips must not satisfy R3")
@@ -153,7 +156,7 @@ func TestR3DoesNotFireWithFewerThanWindowRuns(t *testing.T) {
 		if i%2 == 0 {
 			outcome = Failed
 		}
-		runs = append(runs, run(i, "c", "main", outcome, false))
+		runs = append(runs, run(i, "short-"+strconv.FormatInt(i, 10), "main", outcome, false))
 	}
 	if _, ok := Match(runs, map[int64]bool{}, "main", th); ok {
 		t.Fatal("fewer than 30 kept runs must not fire")

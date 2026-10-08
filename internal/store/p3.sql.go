@@ -34,22 +34,6 @@ func (q *Queries) GetRepositoryDefaultBranch(ctx context.Context, id int64) (str
 	return branch, err
 }
 
-const getRepositoryByName = `
-SELECT id, default_branch FROM repository WHERE name = $1
-`
-
-type GetRepositoryByNameRow struct {
-	ID            int64
-	DefaultBranch string
-}
-
-func (q *Queries) GetRepositoryByName(ctx context.Context, name string) (GetRepositoryByNameRow, error) {
-	row := q.db.QueryRow(ctx, getRepositoryByName, name)
-	var i GetRepositoryByNameRow
-	err := row.Scan(&i.ID, &i.DefaultBranch)
-	return i, err
-}
-
 const listBuildIDsForRules = `
 SELECT id, infra_failure
 FROM build

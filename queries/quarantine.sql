@@ -8,9 +8,6 @@ WHERE id = $1;
 -- name: GetRepositoryDefaultBranch :one
 SELECT default_branch FROM repository WHERE id = $1;
 
--- name: GetRepositoryByName :one
-SELECT id, default_branch FROM repository WHERE name = $1;
-
 -- name: ListBuildIDsForRules :many
 SELECT id, infra_failure
 FROM build
