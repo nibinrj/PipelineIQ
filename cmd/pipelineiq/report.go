@@ -260,11 +260,26 @@ func collectReports(patterns []string) ([]string, error) {
 	return out, nil
 }
 
-func defaultReportDirs() []string {
-	dirs := []string{
-		filepath.Join("target", "surefire-reports"),
-		filepath.Join("target", "failsafe-reports"),
+func reportDirs(module string) []string {
+	base := "target"
+	if module != "" {
+		base = filepath.Join(module, "target")
 	}
+	names := []string{
+		"surefire-reports",
+		"failsafe-reports",
+		"blocking-reports",
+		"quarantine-reports",
+	}
+	dirs := make([]string, 0, len(names))
+	for _, name := range names {
+		dirs = append(dirs, filepath.Join(base, name))
+	}
+	return dirs
+}
+
+func defaultReportDirs() []string {
+	dirs := reportDirs("")
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		return dirs
@@ -273,10 +288,7 @@ func defaultReportDirs() []string {
 		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
-		dirs = append(dirs,
-			filepath.Join(entry.Name(), "target", "surefire-reports"),
-			filepath.Join(entry.Name(), "target", "failsafe-reports"),
-		)
+		dirs = append(dirs, reportDirs(entry.Name())...)
 	}
 	return dirs
 }

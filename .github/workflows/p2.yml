@@ -12,7 +12,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,6 +52,7 @@ jobs:
           dirty=$(gofmt -l .)
           if [ -n "$dirty" ]; then
             echo "$dirty"
+            gofmt -d . > gofmt.diff || true
             exit 1
           fi
           go vet ./...
@@ -66,6 +67,11 @@ jobs:
           set -o pipefail
           bash .github/scripts/p2-stack.sh 2>&1 | tee p2-script.log
 
+      - name: Quarantine loop
+        run: |
+          set -o pipefail
+          bash .github/scripts/p3-loop.sh 2>&1 | tee p3-script.log
+
       - name: Post the evidence
         if: success()
         env:
@@ -73,22 +79,37 @@ jobs:
         run: |
           python3 - << 'PY'
           from pathlib import Path
-          parts = [
-              "P2 stack check passed.",
-              "",
-              "## API response",
-              "```json",
-              Path("p2-api.json").read_text(),
-              "```",
-              "",
-              "## docker stats",
-              "```",
-              Path("p2-stats.txt").read_text(),
-              "```",
-          ]
+          parts = ["P2 stack check passed.", ""]
+          for title, name, fence in (
+              ("API response", "p2-api.json", "json"),
+              ("docker stats", "p2-stats.txt", ""),
+              ("Quarantine API", "p3-quarantine.json", "json"),
+          ):
+              path = Path(name)
+              if not path.exists():
+                  continue
+              parts.extend(["## " + title, "```" + fence, path.read_text()[:20000], "```", ""])
+          console = Path("p3-console-12.txt")
+          if console.exists():
+              lines = [line for line in console.read_text(errors="replace").splitlines() if "pipelineiq" in line or "failsAboutOneInFive" in line or "Tests run:" in line]
+              parts.extend(["## Jenkins console (build 12)", "```", "\n".join(lines[:40]), "```"])
           Path("/tmp/p2-ok.md").write_text("\n".join(parts)[:60000])
           PY
           gh pr comment 1 --body-file /tmp/p2-ok.md
+
+      - name: Post gofmt diff
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f gofmt.diff ]; then
+            python3 - << 'PY'
+            from pathlib import Path
+            diff = Path("gofmt.diff").read_text(errors="replace")[:50000]
+            Path("/tmp/gofmt.md").write_text("gofmt diff\n\n```diff\n" + diff + "\n```\n")
+            PY
+            gh pr comment 1 --body-file /tmp/gofmt.md
+          fi
 
       - name: Post the stack log on failure
         if: failure()
@@ -99,12 +120,12 @@ jobs:
           from pathlib import Path
           needles = ("readyz", "login=", "SEVERE", "Error", "ERROR", "Failed", "Exception", "Caused by", "did not", "Configuration", "casc", "plugin", "exit code", "library", "dubious", "Rejected", "sandbox", "createItem", "pipelineiq")
           chunks = ["P2 stack step failed."]
-          for name in ("p2-agent.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt"):
+          for name in ("p3-script.log", "p2-agent.log", "p2-script.log", "p2-jenkins.log", "p2-compose-logs.txt"):
               path = Path(name)
               if not path.exists():
                   continue
               lines = path.read_text(errors="replace").splitlines()
-              if name == "p2-agent.log":
+              if name in ("p2-agent.log", "p3-script.log"):
                   picked = lines[-40:]
               else:
                   picked = [line for line in lines if any(n in line for n in needles)][-60:]
@@ -127,3 +148,7 @@ jobs:
             p2-jenkins.log
             p2-compose-logs.txt
             p2-compose-ps.txt
+            p3-quarantine.json
+            p3-build.json
+            p3-console-12.txt
+            p3-script.log

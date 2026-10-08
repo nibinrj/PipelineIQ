@@ -1,5 +1,5 @@
-// Command pipelineiq is the agent CLI. Jenkins calls report after a build.
-// quarantine is a stub until P3.
+// Command pipelineiq is the agent CLI. Jenkins calls report after a build
+// and quarantine before the tests.
 package main
 
 import (

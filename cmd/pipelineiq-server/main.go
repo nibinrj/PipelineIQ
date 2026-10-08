@@ -18,6 +18,7 @@ import (
 	"github.com/nibinrj/PipelineIQ/internal/db"
 	"github.com/nibinrj/PipelineIQ/internal/httpserver"
 	"github.com/nibinrj/PipelineIQ/internal/ingest"
+	"github.com/nibinrj/PipelineIQ/internal/quarantine"
 )
 
 func main() {
@@ -58,9 +59,9 @@ func run() error {
 	}
 	log.Info("listening", "addr", ln.Addr().String(), "database_host", databaseHost(cfg.DatabaseURL))
 
-	ingester := ingest.New(pool)
+	ingester := ingest.New(pool).WithRules(cfg.Rules)
 	handler := httpserver.New(log, db.NewStore(pool), cfg.ReadyTimeout, func(mux *http.ServeMux) {
-		api.Register(mux, log, cfg.IngestKey, ingester)
+		api.Register(mux, log, cfg.IngestKey, ingester, quarantine.New(pool))
 	})
 	if err := httpserver.Serve(ctx, ln, handler, cfg.ShutdownTimeout); err != nil {
 		return err

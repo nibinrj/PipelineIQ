@@ -43,7 +43,9 @@ SELECT
     b.duration_ms,
     b.agent_name,
     b.agent_lifecycle,
-    b.log_tail
+    b.log_tail,
+    b.infra_failure,
+    b.infra_reason
 FROM build b
 JOIN repository r ON r.id = b.repository_id
 WHERE b.id = $1
@@ -64,6 +66,8 @@ type GetBuildByIDRow struct {
 	AgentName      *string
 	AgentLifecycle string
 	LogTail        *string
+	InfraFailure   bool
+	InfraReason    *string
 }
 
 func (q *Queries) GetBuildByID(ctx context.Context, id int64) (GetBuildByIDRow, error) {
@@ -84,6 +88,8 @@ func (q *Queries) GetBuildByID(ctx context.Context, id int64) (GetBuildByIDRow, 
 		&i.AgentName,
 		&i.AgentLifecycle,
 		&i.LogTail,
+		&i.InfraFailure,
+		&i.InfraReason,
 	)
 	return i, err
 }
@@ -138,7 +144,7 @@ INSERT INTO test_run (
     failure_hash,
     stage
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, 'BLOCKING'
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 `
 
@@ -150,6 +156,7 @@ type InsertTestRunParams struct {
 	RerunFailures int32
 	FailureType   *string
 	FailureHash   *string
+	Stage         string
 }
 
 func (q *Queries) InsertTestRun(ctx context.Context, arg InsertTestRunParams) error {
@@ -161,6 +168,7 @@ func (q *Queries) InsertTestRun(ctx context.Context, arg InsertTestRunParams) er
 		arg.RerunFailures,
 		arg.FailureType,
 		arg.FailureHash,
+		arg.Stage,
 	)
 	return err
 }

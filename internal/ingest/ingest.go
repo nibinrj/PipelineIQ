@@ -11,6 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/nibinrj/PipelineIQ/internal/quarantine"
+	"github.com/nibinrj/PipelineIQ/internal/rules"
 	"github.com/nibinrj/PipelineIQ/internal/store"
 	"github.com/nibinrj/PipelineIQ/internal/surefire"
 )
@@ -50,9 +52,10 @@ type Stage struct {
 	Result     string
 }
 
-// Test is one parsed testcase plus the module from the uploaded filename.
+// Test is one parsed testcase plus the module and stage from the uploaded path.
 type Test struct {
 	Module string
+	Stage  string
 	surefire.Case
 }
 
@@ -67,9 +70,11 @@ type Build struct {
 	CommitSHA   string      `json:"commit_sha"`
 	Result      string      `json:"result"`
 	AgentName   string      `json:"agent_name,omitempty"`
-	LogTail     string      `json:"log_tail,omitempty"`
-	Stages      []StageView `json:"stages"`
-	Tests       []TestView  `json:"tests"`
+	LogTail      string      `json:"log_tail,omitempty"`
+	InfraFailure bool        `json:"infra_failure"`
+	InfraReason  string      `json:"infra_reason,omitempty"`
+	Stages       []StageView `json:"stages"`
+	Tests        []TestView  `json:"tests"`
 }
 
 // StageView is one stored stage.
@@ -95,12 +100,19 @@ type TestView struct {
 
 // Service writes reports through the pool. One Apply call is one transaction.
 type Service struct {
-	pool *pgxpool.Pool
+	pool  *pgxpool.Pool
+	rules rules.Thresholds
 }
 
-// New binds the service to the process pool.
+// New binds the service to the process pool and the plan's default thresholds.
 func New(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool}
+	return &Service{pool: pool, rules: rules.Defaults()}
+}
+
+// WithRules replaces the detection thresholds. The server calls this at startup.
+func (s *Service) WithRules(th rules.Thresholds) *Service {
+	s.rules = th
+	return s
 }
 
 // Apply inserts or updates the build and replaces its stages and test runs.
@@ -165,6 +177,10 @@ func (s *Service) Apply(ctx context.Context, report Report) (Build, error) {
 		if err != nil {
 			return Build{}, fmt.Errorf("test case %s#%s: %w", test.ClassName, test.MethodName, err)
 		}
+		stage := test.Stage
+		if stage == "" {
+			stage = "BLOCKING"
+		}
 		if err := q.InsertTestRun(ctx, store.InsertTestRunParams{
 			BuildID:       buildID,
 			TestCaseID:    caseID,
@@ -173,9 +189,13 @@ func (s *Service) Apply(ctx context.Context, report Report) (Build, error) {
 			RerunFailures: test.RerunFailures,
 			FailureType:   optional(test.FailureType),
 			FailureHash:   optional(test.FailureHash),
+			Stage:         stage,
 		}); err != nil {
 			return Build{}, fmt.Errorf("test run %s#%s: %w", test.ClassName, test.MethodName, err)
 		}
+	}
+	if err := quarantine.AfterIngest(ctx, q, repoID, buildID, report.LogTail, s.rules); err != nil {
+		return Build{}, fmt.Errorf("rules: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Build{}, fmt.Errorf("commit: %w", err)
@@ -218,6 +238,10 @@ func (s *Service) Get(ctx context.Context, id int64) (Build, error) {
 	}
 	if row.LogTail != nil {
 		view.LogTail = *row.LogTail
+	}
+	view.InfraFailure = row.InfraFailure
+	if row.InfraReason != nil {
+		view.InfraReason = *row.InfraReason
 	}
 	for _, stage := range stages {
 		view.Stages = append(view.Stages, StageView{

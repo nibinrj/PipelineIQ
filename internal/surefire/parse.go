@@ -262,6 +262,16 @@ func ModuleFromFilename(name string) string {
 	return mod
 }
 
+// StageFromFilename reports QUARANTINE when the CLI preserved the quarantine
+// report directory. Every other report is the blocking stage.
+func StageFromFilename(name string) string {
+	name = strings.ReplaceAll(name, "\\", "/")
+	if strings.Contains(name, "/quarantine-reports/") {
+		return "QUARANTINE"
+	}
+	return "BLOCKING"
+}
+
 // ParseBytes is Parse for a fixture or an uploaded part.
 func ParseBytes(b []byte) ([]Case, error) {
 	return Parse(bytes.NewReader(b))

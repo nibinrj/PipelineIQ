@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/nibinrj/PipelineIQ/internal/rules"
 )
 
 // Config is everything the process needs to start. The database URL is never
@@ -20,6 +22,8 @@ type Config struct {
 	// IngestKey is the bearer token for POST /api/v1/builds. It is required so
 	// an empty configuration cannot leave ingest open.
 	IngestKey string
+	// Rules are the flaky and quarantine thresholds. Defaults match the plan.
+	Rules rules.Thresholds
 }
 
 // FromEnv reads PIPELINEIQ_* variables. Missing optional values get the
@@ -32,6 +36,10 @@ func FromEnv() (Config, error) {
 		ReadyTimeout:    2 * time.Second,
 		LogLevel:        strings.ToLower(envOr("PIPELINEIQ_LOG_LEVEL", "info")),
 		IngestKey:       strings.TrimSpace(os.Getenv("PIPELINEIQ_INGEST_KEY")),
+		Rules:           rules.Defaults(),
+	}
+	if err := applyRulesFile(&cfg.Rules, strings.TrimSpace(os.Getenv("PIPELINEIQ_RULES_FILE"))); err != nil {
+		return Config{}, err
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("PIPELINEIQ_DATABASE_URL is required")

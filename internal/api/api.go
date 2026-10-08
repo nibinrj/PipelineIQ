@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/nibinrj/PipelineIQ/internal/ingest"
+	"github.com/nibinrj/PipelineIQ/internal/quarantine"
 	"github.com/nibinrj/PipelineIQ/internal/surefire"
 )
 
@@ -31,20 +32,31 @@ type Ingester interface {
 	Get(ctx context.Context, id int64) (ingest.Build, error)
 }
 
-// Register mounts the ingest routes on the process mux.
-func Register(mux *http.ServeMux, log *slog.Logger, key string, svc Ingester) {
+// QuarantineAPI is the list and the manual endpoints. Tests pass a fake.
+type QuarantineAPI interface {
+	List(ctx context.Context, repo string) (quarantine.List, error)
+	ManualQuarantine(ctx context.Context, repo, className, methodName string) (quarantine.Item, error)
+	ManualRelease(ctx context.Context, repo, className, methodName string) (quarantine.Item, error)
+}
+
+// Register mounts the ingest and quarantine routes on the process mux.
+func Register(mux *http.ServeMux, log *slog.Logger, key string, svc Ingester, q QuarantineAPI) {
 	if log == nil {
 		log = slog.Default()
 	}
-	h := &handler{log: log, key: key, svc: svc}
+	h := &handler{log: log, key: key, svc: svc, quarantine: q}
 	mux.Handle("POST /api/v1/builds", h.auth(http.HandlerFunc(h.create)))
 	mux.Handle("GET /api/v1/builds/{id}", h.auth(http.HandlerFunc(h.get)))
+	mux.Handle("GET /api/v1/quarantine", h.auth(http.HandlerFunc(h.listQuarantine)))
+	mux.Handle("POST /api/v1/quarantine", h.auth(http.HandlerFunc(h.manualQuarantine)))
+	mux.Handle("POST /api/v1/quarantine/release", h.auth(http.HandlerFunc(h.manualRelease)))
 }
 
 type handler struct {
-	log *slog.Logger
-	key string
-	svc Ingester
+	log        *slog.Logger
+	key        string
+	svc        Ingester
+	quarantine QuarantineAPI
 }
 
 func (h *handler) auth(next http.Handler) http.Handler {
@@ -92,6 +104,74 @@ func (h *handler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, view)
+}
+
+type quarantineBody struct {
+	Repository string `json:"repository"`
+	ClassName  string `json:"class_name"`
+	MethodName string `json:"method_name"`
+}
+
+func (h *handler) listQuarantine(w http.ResponseWriter, r *http.Request) {
+	if h.quarantine == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	repo := strings.TrimSpace(r.URL.Query().Get("repo"))
+	if repo == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "repo is required"})
+		return
+	}
+	list, err := h.quarantine.List(r.Context(), repo)
+	if err != nil {
+		h.log.Error("list quarantine failed", "err", err, "repo", repo)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
+func (h *handler) manualQuarantine(w http.ResponseWriter, r *http.Request) {
+	h.manual(w, r, true)
+}
+
+func (h *handler) manualRelease(w http.ResponseWriter, r *http.Request) {
+	h.manual(w, r, false)
+}
+
+func (h *handler) manual(w http.ResponseWriter, r *http.Request, quarantineIt bool) {
+	if h.quarantine == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	var body quarantineBody
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "expected json"})
+		return
+	}
+	var (
+		item quarantine.Item
+		err  error
+	)
+	if quarantineIt {
+		item, err = h.quarantine.ManualQuarantine(r.Context(), strings.TrimSpace(body.Repository), strings.TrimSpace(body.ClassName), strings.TrimSpace(body.MethodName))
+	} else {
+		item, err = h.quarantine.ManualRelease(r.Context(), strings.TrimSpace(body.Repository), strings.TrimSpace(body.ClassName), strings.TrimSpace(body.MethodName))
+	}
+	if err != nil {
+		if quarantine.IsNotFound(err) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+			return
+		}
+		if strings.Contains(err.Error(), "required") {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		h.log.Error("manual quarantine failed", "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
 }
 
 func (h *handler) get(w http.ResponseWriter, r *http.Request) {
@@ -190,10 +270,11 @@ func readReport(r *http.Request) (ingest.Report, error) {
 			}
 			// ParseMultipartForm keeps only the base name. The module is the
 			// directory before /target/, so the original relative path is required.
-			module := surefire.ModuleFromFilename(name)
-			for _, one := range cases {
-				report.Tests = append(report.Tests, ingest.Test{Module: module, Case: one})
-			}
+		module := surefire.ModuleFromFilename(name)
+		stage := surefire.StageFromFilename(name)
+		for _, one := range cases {
+			report.Tests = append(report.Tests, ingest.Test{Module: module, Stage: stage, Case: one})
+		}
 		}
 	}
 	return report, nil

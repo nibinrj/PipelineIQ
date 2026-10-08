@@ -17,7 +17,7 @@ func TestCreateAndAuth(t *testing.T) {
 	const key = "local-key"
 	fake := &fakeIngest{}
 	mux := http.NewServeMux()
-	Register(mux, nil, key, fake)
+	Register(mux, nil, key, fake, nil)
 
 	meta := `{"repository":"nibinrj/pipelineiq-lab","job_name":"pipelineiq-lab/main","build_number":7,"branch":"main","commit_sha":"abc","result":"SUCCESS"}`
 	body, contentType := multipartBody(t, meta, "core/target/surefire-reports/TEST-Core.xml", passedXML)
@@ -64,7 +64,7 @@ func TestCreateAndAuth(t *testing.T) {
 
 func TestGetNotFound(t *testing.T) {
 	mux := http.NewServeMux()
-	Register(mux, nil, "k", &fakeIngest{getErr: ingest.ErrNotFound})
+	Register(mux, nil, "k", &fakeIngest{getErr: ingest.ErrNotFound}, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/builds/4", nil)
 	req.Header.Set("Authorization", "Bearer k")
 	rec := httptest.NewRecorder()
@@ -115,7 +115,7 @@ func (f *fakeIngest) Get(context.Context, int64) (ingest.Build, error) {
 
 func TestResponseIsJSON(t *testing.T) {
 	mux := http.NewServeMux()
-	Register(mux, nil, "k", &fakeIngest{})
+	Register(mux, nil, "k", &fakeIngest{}, nil)
 	body, contentType := multipartBody(t, `{"repository":"r","job_name":"j","build_number":1,"branch":"main","commit_sha":"abc","result":"SUCCESS"}`, "TEST.xml", passedXML)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/builds", bytes.NewReader(body))
 	req.Header.Set("Content-Type", contentType)

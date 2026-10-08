@@ -66,7 +66,7 @@ INSERT INTO test_run (
     failure_hash,
     stage
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, 'BLOCKING'
+    $1, $2, $3, $4, $5, $6, $7, $8
 );
 
 -- name: GetBuildByID :one
@@ -84,7 +84,9 @@ SELECT
     b.duration_ms,
     b.agent_name,
     b.agent_lifecycle,
-    b.log_tail
+    b.log_tail,
+    b.infra_failure,
+    b.infra_reason
 FROM build b
 JOIN repository r ON r.id = b.repository_id
 WHERE b.id = $1;
